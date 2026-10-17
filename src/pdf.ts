@@ -114,6 +114,7 @@ export async function appendPdf(
   state: Workspace,
   bytes: Uint8Array,
   name: string,
+  sourceId = uid(),
 ): Promise<Workspace> {
   let sizes: [number,number][];
   try {
@@ -127,7 +128,7 @@ export async function appendPdf(
       "No pudimos leer este archivo PDF. Comprueba que no esté dañado.",
     );
   }
-  const source: Source = { id: uid(), name, bytes };
+  const source: Source = { id: sourceId, name, bytes };
   return {
     name: state.pages.length ? state.name : name.replace(/\.pdf$/i, ""),
     fonts: state.fonts,
