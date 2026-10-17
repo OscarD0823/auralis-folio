@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {PDFDocument,degrees,PDFName,PDFNumber} from 'pdf-lib';
 import {appendPdf,emptyWorkspace,buildPdf} from '../src/pdf';
 import {pdfPageSizes} from '../src/pdf-metadata';
+import {projectBytes,readProject} from '@prisma/core/projects';
 
 test('a 500-page PDF retains every page, mixed sizes and rotations through opening/export',async()=>{
   const pdf=await PDFDocument.create();
@@ -18,6 +19,11 @@ test('a 500-page PDF retains every page, mixed sizes and rotations through openi
   assert.equal(workspace.pages.at(-1)!.index,499);
   assert.ok(workspace.pages.every(page=>!page.marks.length&&!page.textReady));
   assert.deepEqual(await buildPdf(workspace),bytes);
+  const restored=await readProject(projectBytes(workspace));
+  assert.equal(restored.pages.length,500);
+  assert.deepEqual(restored.pages.map(p=>p.size),workspace.pages.map(p=>p.size));
+  restored.pages[0].size=[0,842];
+  await assert.rejects(readProject(projectBytes(restored)),/tamaño de una página/);
 });
 test('initial page placeholders match cropped, scaled and rotated viewports',async()=>{
   const pdf=await PDFDocument.create(),page=pdf.addPage([600,800]);
