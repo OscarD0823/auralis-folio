@@ -6,14 +6,17 @@ export function insertBlankPage(
   placement: string,
   pageMap: Record<string, number> = {},
 ): RichNode {
-  const nodes = [...(content.content ?? [])],
-    pageOf = (n: RichNode) =>
-      Number(n.attrs?.page) || pageMap[String(n.attrs?.id)] || 0;
+  const nodes = [...(content.content ?? [])];
+  let inferredPage=1;
+  const pages=nodes.map(n=>{
+    if(n.type==='pageBreak'||(n.type==='sectionBreak'&&n.attrs?.kind!=='continuous'))inferredPage++;
+    return Number(n.attrs?.page)||pageMap[String(n.attrs?.id)]||inferredPage;
+  });
   const target = placement === "above" ? page : page + 1;
   let index =
     placement === "end"
       ? nodes.length
-      : nodes.findIndex((n) => pageOf(n) >= target);
+      : nodes.findIndex((n,i) => n.type!=='pageBreak'&&n.type!=='sectionBreak'&&pages[i] >= target);
   if (index < 0) index = nodes.length;
   const blank: RichNode = {
     type: "paragraph",
