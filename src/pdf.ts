@@ -20,6 +20,7 @@ import {
 import { createFontProvider, finalizeFontStreams } from "@prisma/core/fonts";
 import type { LocalFont } from "@prisma/core/local-fonts";
 import { preparedTextChanged } from "./pdf-text";
+import {readPdfPages} from './pdf-loader';
 
 export type MarkType =
   | "text"
@@ -64,6 +65,7 @@ export type Page = {
   index: number;
   rotation: number;
   marks: Mark[];
+  size?: [number,number];
   textReady?: boolean;
   originalText?: { mark: Mark; rect: [number, number, number, number] }[];
 };
@@ -113,9 +115,9 @@ export async function appendPdf(
   bytes: Uint8Array,
   name: string,
 ): Promise<Workspace> {
-  let doc: PDFDocument;
+  let sizes: [number,number][];
   try {
-    doc = await PDFDocument.load(bytes);
+    sizes = await readPdfPages(bytes);
   } catch (error) {
     if (error instanceof Error && /encrypted|password/i.test(error.message))
       throw new Error(
@@ -125,8 +127,6 @@ export async function appendPdf(
       "No pudimos leer este archivo PDF. Comprueba que no esté dañado.",
     );
   }
-  if (doc.isEncrypted)
-    throw new Error("Este PDF está protegido. Abre una copia sin contraseña.");
   const source: Source = { id: uid(), name, bytes };
   return {
     name: state.pages.length ? state.name : name.replace(/\.pdf$/i, ""),
@@ -134,12 +134,13 @@ export async function appendPdf(
     sources: [...state.sources, source],
     pages: [
       ...state.pages,
-      ...doc.getPages().map((_, index) => ({
+      ...sizes.map((size, index) => ({
         id: uid(),
         sourceId: source.id,
         index,
         rotation: 0,
         marks: [],
+        size,
       })),
     ],
   };
